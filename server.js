@@ -1,5 +1,8 @@
 /* jshint esversion:6 */
-
+var BinaryServer = require('binaryjs').BinaryServer;
+var fs = require('fs');
+var wav = require('wav');
+var outFile = 'test';
 
 var express = require("express");
 var cors = require('cors');
@@ -20,6 +23,32 @@ var Contributor = ContributorConstructor(mongoose);
 
 var Storage = require('./storage.js');
 var storage = new Storage();
+
+
+
+binaryServer = BinaryServer({port: 9001});
+
+binaryServer.on('connection', function(client) {
+  console.log('new connection');
+
+  var fileWriter = new wav.FileWriter(outFile, {
+    channels: 1,
+    sampleRate: 48000,
+    bitDepth: 16
+  });
+
+  client.on('stream', function(stream, meta) {
+    console.log('new stream');
+    stream.pipe(fileWriter);
+
+    stream.on('end', function() {
+      fileWriter.end();
+      console.log('wrote to file ' + outFile);
+    });
+  });
+});
+
+
 
 var bodyParser = require("body-parser");
 
@@ -86,7 +115,7 @@ app.post("/api/add-contributor/:id", function(req, res) {
 	var contributor = new Contributor({name: req.body.newContributor.name});
 	Card.findOneAndUpdate(
 		{_id : cardId },
-		{$push: {"contributors": {contributor}}},
+		{$push: {"contributors": contributor}},
 		{new: true},
 		(err, card) => {
 			if (err) {
@@ -103,20 +132,33 @@ app.post("/api/add-contributor/:id", function(req, res) {
 app.post("/api/remove-contributor/:id", function(req, res) {
 	var cardId = req.params.id;
 	var contributor = req.body.contributor;
-	var Id = contributor.contributor._id;
+	var Id = contributor.name ;
+	console.log(contributor);
+	console.log(Id);
 	Card.update(
 	  { _id: cardId },
-	  { $pull: { contributors: {_id: Id} } },
-		(err) => {
+	  { $pull: { 'contributors': {name: Id} } },
+	  { 'new': true },
+		(err, data) => {
 			if (err) {
 				console.log(err);
 				res.status(500);
 				res.send({status: "error", message: "sass overload"});
 				return;
 			}
+			console.log(data,"hello");
 			res.send([]);
 		}
 	);
+
+	// Card.findOne({ _id: cardId }, (err, data) => {
+	// 	console.log(data.contributors[0].contributor._id);
+	// });
+
+
+
+
+
 });
 
 app.post("/api/add-redcording/:id", function(req, res) {
