@@ -95,17 +95,27 @@ app.post("/api/add-contributor/:id", function(req, res) {
 				res.send({status: "error", message: "sass overload"});
 				return;
 			}
-			res.send(card);
+			res.send([]);
 		}
 	);
 });
 
 app.post("/api/remove-contributor/:id", function(req, res) {
 	var cardId = req.params.id;
-	var contributor = req.body;
+	var contributor = req.body.contributor;
+	var Id = contributor.contributor._id;
 	Card.update(
-	  { _id: card._id },
-	  { $pull: { 'contributors': {_id} } }
+	  { _id: cardId },
+	  { $pull: { contributors: {_id: Id} } },
+		(err) => {
+			if (err) {
+				console.log(err);
+				res.status(500);
+				res.send({status: "error", message: "sass overload"});
+				return;
+			}
+			res.send([]);
+		}
 	);
 });
 
