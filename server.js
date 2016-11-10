@@ -29,17 +29,20 @@ var storage = new Storage();
 binaryServer = BinaryServer({port: 9001});
 
 binaryServer.on('connection', function(client) {
-  console.log('new connection');
+  console.log('new connection');  
 
-  var fileWriter = new wav.FileWriter(outFile, {
-    channels: 1,
-    sampleRate: 48000,
-    bitDepth: 16
-  });
+  var fileWriter = new wav.FileWriter('./music/' + outFile, {
+	    channels: 1,
+	    sampleRate: 48000,
+	    bitDepth: 16
+  	});
 
   client.on('stream', function(stream, meta) {
-    console.log('new stream');
+    console.log('new stream', meta);
+    outFile = meta.name;
     stream.pipe(fileWriter);
+
+    
 
     stream.on('end', function() {
       fileWriter.end();
@@ -150,15 +153,25 @@ app.post("/api/remove-contributor/:id", function(req, res) {
 			res.send([]);
 		}
 	);
+});
 
-	// Card.findOne({ _id: cardId }, (err, data) => {
-	// 	console.log(data.contributors[0].contributor._id);
-	// });
-
-
-
-
-
+app.post("/api/set-song/:id", function(req, res) {
+	var cardId = req.params.id;
+	var song = req.body.song;
+	Card.findOneAndUpdate(
+		{_id : cardId },
+		{song: song},
+		{new: true},
+		(err, card) => {
+			if (err) {
+				console.log(err);
+				res.status(500);
+				res.send({status: "error", message: "sass overload"});
+				return;
+			}
+			res.send(card);
+		}
+	);
 });
 
 app.post("/api/add-redcording/:id", function(req, res) {
