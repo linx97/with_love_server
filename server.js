@@ -31,15 +31,14 @@ binaryServer = BinaryServer({port: 9001});
 binaryServer.on('connection', function(client) {
   console.log('new connection');  
 
-  var fileWriter = new wav.FileWriter('./music/' + outFile, {
+  client.on('stream', function(stream, meta) {
+    console.log('new stream', meta);
+    outFile = meta.name;
+    var fileWriter = new wav.FileWriter('./messages/' + outFile, {
 	    channels: 1,
 	    sampleRate: 48000,
 	    bitDepth: 16
   	});
-
-  client.on('stream', function(stream, meta) {
-    console.log('new stream', meta);
-    outFile = meta.name;
     stream.pipe(fileWriter);
 
     
@@ -71,7 +70,7 @@ app.get("/", function(req, res) {
 });
 
 app.post("/api/new-card", function(req, res) {
-	var card = new Card({title: req.body.card.title});
+	var card = new Card({title: req.body.card.title, songVolume: 0.3});
 	card.save();
 	res.send({status: "success", message: "New card added!"});
 });
@@ -84,7 +83,7 @@ app.get("/api/get-cards", function(req, res) {
 			res.send({status: "error", message: "couldn't get cards"});
 			return;
 		}
-		res.send(cards);
+		res.send(cards.reverse());
 	});
 });
 
@@ -96,11 +95,10 @@ app.get("/api/get-card/:id", function(req, res) {
 });
 
 app.post("/api/delete-card", function(req, res) {
-	var card = req.body.card;
-	console.log(card);
-	console.log(card._id);
+	var cardId = req.body.cardId;
+	console.log(cardId);
 	Card.remove(
-	  { _id: card._id },
+	  { _id: cardId},
 		(err) => {
 			if (err) {
 				console.log(err);
@@ -115,7 +113,7 @@ app.post("/api/delete-card", function(req, res) {
 
 app.post("/api/add-contributor/:id", function(req, res) {
 	var cardId = req.params.id;
-	var contributor = new Contributor({name: req.body.newContributor.name});
+	var contributor = new Contributor({name: req.body.newContributor.name, message: false});
 	Card.findOneAndUpdate(
 		{_id : cardId },
 		{$push: {"contributors": contributor}},
@@ -174,21 +172,90 @@ app.post("/api/set-song/:id", function(req, res) {
 	);
 });
 
-app.post("/api/add-redcording/:id", function(req, res) {
+app.post("/api/set-volume/:id", function(req, res) {
+	var cardId = req.params.id;
+	var songVolume = req.body.songVolume;
+	Card.findOneAndUpdate(
+		{_id : cardId },
+		{songVolume: songVolume},
+		{new: true},
+		(err, card) => {
+			if (err) {
+				console.log(err);
+				res.status(500);
+				res.send({status: "error", message: "sass overload"});
+				return;
+			}
+			res.send(card);
+		}
+	);
+});
+
+app.post("/api/add-message", function(req, res) {
+	var contributorId = req.body.contributorId;
+	var cardId = req.body.cardId;
+	console.log("card", cardId);
+	
+	Card.findOne({_id: cardId}, (err, card) => {
+		console.log(card);
+		if (err) {
+			console.log(err);
+			res.status(500);
+			res.send({status: "error", message: "sass overload"});
+			return;
+		}
+		var array = [];
+		card.contributors.map(function(obj){ 
+			console.log("obj", obj._id, "id", contributorId);
+		   if (obj._id == contributorId) {
+		   		obj.message = true;	
+		   		array.push(obj);	
+		   } else {
+		   		array.push(obj);
+		   }
+
+		});
+		Card.findOneAndUpdate(
+			{_id : cardId },
+			{contributors: array},
+			{new: true},
+			(err, card) => {
+				if (err) {
+					console.log(err);
+					res.status(500);
+					res.send({status: "error", message: "sass overload"});
+					return;
+				}
+				res.send([]);
+			}
+		);
+
+	});
+	
+
+});
+
+app.post("/api/get-name/:id", function(req, res) {
 	var contributorId = req.params.id;
 	var cardId = req.body.cardId;
-	var recording = req.body.recording;
-	var info = {
-		cardId: cardId,
-		recording: recording,
-		contributorId: contributorId
-	};
-	storage.addRecording(info, (rec) => {
-		console.log("server: add record", recording);
-		res.send(card);
+	Card.findOne({_id: cardId}, (err, card) => {
+		if (err) {
+			console.log(err);
+			res.status(500);
+			res.send({status: "error", message: "sass overload"});
+			return;
+		}
+		console.log("contributorId", contributorId);
+		for (var i of card.contributors) {
+			if (i._id == contributorId) {
+				res.send(i);
+			}
+		}
 	});
 });
 
+
+app.use(express.static("messages"));
 
 app.use(function(req, res, next) {
 	res.status(404);
