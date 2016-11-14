@@ -21,11 +21,6 @@ var Card = CardConstructor(mongoose);
 var ContributorConstructor = require("./Contributor.js");
 var Contributor = ContributorConstructor(mongoose);
 
-var Storage = require('./storage.js');
-var storage = new Storage();
-
-
-
 binaryServer = BinaryServer({port: 9001});
 
 binaryServer.on('connection', function(client) {
@@ -96,14 +91,13 @@ app.get("/api/get-card/:id", function(req, res) {
 
 app.post("/api/delete-card", function(req, res) {
 	var cardId = req.body.cardId;
-	console.log(cardId);
 	Card.remove(
 	  { _id: cardId},
 		(err) => {
 			if (err) {
 				console.log(err);
 				res.status(500);
-				res.send({status: "error", message: "sass overload"});
+				res.send({status: "error", message: "fail"});
 				return;
 			}
 			res.send([]);
@@ -122,7 +116,7 @@ app.post("/api/add-contributor/:id", function(req, res) {
 			if (err) {
 				console.log(err);
 				res.status(500);
-				res.send({status: "error", message: "sass overload"});
+				res.send({status: "error", message: "fail"});
 				return;
 			}
 			res.send([]);
@@ -144,10 +138,9 @@ app.post("/api/remove-contributor/:id", function(req, res) {
 			if (err) {
 				console.log(err);
 				res.status(500);
-				res.send({status: "error", message: "sass overload"});
+				res.send({status: "error", message: "fail"});
 				return;
 			}
-			console.log(data,"hello");
 			res.send([]);
 		}
 	);
@@ -164,7 +157,7 @@ app.post("/api/set-song/:id", function(req, res) {
 			if (err) {
 				console.log(err);
 				res.status(500);
-				res.send({status: "error", message: "sass overload"});
+				res.send({status: "error", message: "fail"});
 				return;
 			}
 			res.send(card);
@@ -183,7 +176,7 @@ app.post("/api/set-volume/:id", function(req, res) {
 			if (err) {
 				console.log(err);
 				res.status(500);
-				res.send({status: "error", message: "sass overload"});
+				res.send({status: "error", message: "fail"});
 				return;
 			}
 			res.send(card);
@@ -194,19 +187,15 @@ app.post("/api/set-volume/:id", function(req, res) {
 app.post("/api/add-message", function(req, res) {
 	var contributorId = req.body.contributorId;
 	var cardId = req.body.cardId;
-	console.log("card", cardId);
-	
 	Card.findOne({_id: cardId}, (err, card) => {
-		console.log(card);
 		if (err) {
 			console.log(err);
 			res.status(500);
-			res.send({status: "error", message: "sass overload"});
+			res.send({status: "error", message: "fail"});
 			return;
 		}
 		var array = [];
 		card.contributors.map(function(obj){ 
-			console.log("obj", obj._id, "id", contributorId);
 		   if (obj._id == contributorId) {
 		   		obj.message = true;	
 		   		array.push(obj);	
@@ -223,16 +212,13 @@ app.post("/api/add-message", function(req, res) {
 				if (err) {
 					console.log(err);
 					res.status(500);
-					res.send({status: "error", message: "sass overload"});
+					res.send({status: "error", message: "fail"});
 					return;
 				}
 				res.send([]);
 			}
 		);
-
 	});
-	
-
 });
 
 app.post("/api/get-name/:id", function(req, res) {
@@ -242,15 +228,34 @@ app.post("/api/get-name/:id", function(req, res) {
 		if (err) {
 			console.log(err);
 			res.status(500);
-			res.send({status: "error", message: "sass overload"});
+			res.send({status: "error", message: "fail"});
 			return;
 		}
-		console.log("contributorId", contributorId);
 		for (var i of card.contributors) {
 			if (i._id == contributorId) {
 				res.send(i);
 			}
 		}
+	});
+});
+
+app.get("/api/get-messages/:id", function(req, res) {
+	var cardId = req.params.id;
+	Card.findOne({_id: cardId}, (err, card) => {
+		if (err) {
+			console.log(err);
+			res.status(500);
+			res.send({status: "error", message: "fail"});
+			return;
+		}
+		var messageArray = [];
+		for (let c of card.contributors) {
+			if (c.message) {
+				let message = "http://localhost:8000/" + c._id;
+					messageArray.push(message);
+				}
+			}
+		res.send(messageArray);
 	});
 });
 
